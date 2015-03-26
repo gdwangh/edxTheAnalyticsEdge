@@ -71,7 +71,18 @@ PredictForest = predict(StevensForest, newdata = Test)
 table(Test$Reverse, PredictForest)
 (40+74)/(40+37+19+74)
 
+# Quick question
+set.seed(100)
+StevensForest2 = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst, data = Train, ntree=200, nodesize=25 )
+PredictForest2 = predict(StevensForest2, newdata = Test)
+table(Test$Reverse, PredictForest2)
+(43+74)/(43+34+19+74)
 
+set.seed(200)
+StevensForest3 = randomForest(Reverse ~ Circuit + Issue + Petitioner + Respondent + LowerCourt + Unconst, data = Train, ntree=200, nodesize=25 )
+PredictForest3 = predict(StevensForest3, newdata = Test)
+table(Test$Reverse, PredictForest3)
+(44+76)/(44+33+17+76)
 
 # VIDEO 6
 
@@ -96,3 +107,5 @@ PredictCV = predict(StevensTreeCV, newdata = Test, type = "class")
 table(Test$Reverse, PredictCV)
 (59+64)/(59+18+29+64)
 
+# Quick question
+prp(StevensTreeCV)
