@@ -2,6 +2,7 @@
 
 
 # VIDEO 6
+setwd('D:/workspace/The Analytics Edge/unit4')
 
 # Read in the data
 Claims = read.csv("ClaimsData.csv")
@@ -22,13 +23,17 @@ ClaimsTrain = subset(Claims, spl==TRUE)
 
 ClaimsTest = subset(Claims, spl==FALSE)
 
+# Quick question
+mean(ClaimsTrain$age)
+
+nrow(subset(ClaimsTrain, diabetes>0))/nrow(ClaimsTrain)
 
 # VIDEO 7
 
 # Baseline method
 table(ClaimsTest$bucket2009, ClaimsTest$bucket2008)
 
-(110138 + 10721 + 2774 + 1539 + 104)/nrow(ClaimsTest)
+(110138 + 10721 + 2774 + 1539 + 104)/nrow(ClaimsTest)  # accuracy = 0.6838135
 
 # Penalty Matrix
 PenaltyMatrix = matrix(c(0,1,2,3,4,2,0,1,2,3,4,2,0,1,2,6,4,2,0,1,8,6,4,2,0), byrow=TRUE, nrow=5)
@@ -39,6 +44,17 @@ PenaltyMatrix
 as.matrix(table(ClaimsTest$bucket2009, ClaimsTest$bucket2008))*PenaltyMatrix
 
 sum(as.matrix(table(ClaimsTest$bucket2009, ClaimsTest$bucket2008))*PenaltyMatrix)/nrow(ClaimsTest)
+
+# Quick question
+# used the baseline method of predicting the most frequent outcome for all observations
+table(ClaimsTrain$bucket2008)
+
+# most frequent outcome is 1
+table(ClaimsTest$bucket2009)
+122978/nrow(ClaimsTest)  # accuracy = 0.67127
+
+sum(matrix(c(table(ClaimsTest$bucket2009), rep(0,20)),nrow=5,ncol=5) * PenaltyMatrix)/nrow(ClaimsTest)
+
 
 
 # VIDEO 8
