@@ -1,4 +1,5 @@
 # Unit 6 - Recitation
+setwd("D:/doc/study/TheAnalyticsEdge/unit6")
 
 # Video 2
 
@@ -24,7 +25,7 @@ distance = dist(flowerVector, method = "euclidean")
 # Video 3
 
 # Hierarchical clustering
-clusterIntensity = hclust(distance, method="ward")
+clusterIntensity = hclust(distance, method="ward.D")
 
 # Plot the dendrogram
 plot(clusterIntensity)
@@ -85,7 +86,10 @@ dim(healthyClusters) = c(nrow(healthyMatrix), ncol(healthyMatrix))
 
 image(healthyClusters, axes = FALSE, col=rainbow(k))
 
-
+# select the number of clusters is by using a scree plot
+SumWithinss = sapply(2:10, function(x) sum(kmeans(healthyVector, centers=x, iter.max=1000)$withinss))
+NumClusters = seq(2,10,1)
+plot(NumClusters, SumWithinss, type="b")
 
 # Video 6
 
