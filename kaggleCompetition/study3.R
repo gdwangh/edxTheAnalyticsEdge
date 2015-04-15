@@ -6,6 +6,36 @@ NewsTrain$Popular  = as.factor( NewsTrain$Popular)
 
 NewsTest = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
 
+str(NewsTrain)
+
+NewsTrain$NewsDesk = as.factor(NewsTrain$NewsDesk)
+NewsTrain$SectionName = as.factor(NewsTrain$SectionName)
+NewsTrain$SubsectionName = as.factor(NewsTrain$SubsectionName)
+
+NewsTrain$PubDate = strptime(NewsTrain$PubDate, "%Y-%m-%d %H:%M:%S")
+NewsTrain$Month = NewsTrain$PubDate$mon
+NewsTrain$Date = NewsTrain$PubDate$mday
+NewsTrain$Weekday = NewsTrain$PubDate$wday
+NewsTrain$Hour = NewsTrain$PubDate$hour
+
+
+# glm
+NewsLog = glm(Popular ~ NewsDesk+SectionName+SubsectionName+WordCount+Weekday+Month+Date+Hour, data=NewsTrain, family=binomial)
+
+library("ROCR")
+NewsLog.pred = predict(NewsLog, type = "response")
+ROCR.NewsLog.pred = prediction(NewsLog.pred, NewsTrain$Popular)
+auc1 = as.numeric(performance(ROCR.NewsLog.pred, "auc")@y.values)
+auc1  # 0.9311218
+
+summary(NewsLog) # Month & mdate is not enough
+NewsLog = glm(Popular ~ NewsDesk+SectionName+SubsectionName+WordCount+Weekday+Hour, data=NewsTrain, family=binomial)
+
+NewsLog.pred = predict(NewsLog, type = "response")
+ROCR.NewsLog.pred = prediction(NewsLog.pred, NewsTrain$Popular)
+auc1 = as.numeric(performance(ROCR.NewsLog.pred, "auc")@y.values)
+auc1  # 0.9329245
+
 # bag: headline
 library(tm)
 library(SnowballC)
@@ -59,60 +89,29 @@ sparse = removeSparseTerms(dtm, 0.98)
 AbstractWordsTrain = as.data.frame(as.matrix(sparse))
 colnames(AbstractWordsTrain) = paste0("Abstract.", make.names(colnames(AbstractWordsTrain)))
 
-
-# NewsTrainWords = cbind(HeadlineWordsTrain, SnippetWordsTrain, AbstractWordsTrain)
-NewsTrainWords = cbind(HeadlineWordsTrain)
+NewsTrainWords = cbind(HeadlineWordsTrain, SnippetWordsTrain, AbstractWordsTrain)
 
 NewsTrainWords$Popular = NewsTrain$Popular
-NewsTrainWords$WordCount = NewsTrain$WordCount 
-NewsTrainWords$NewsDesk = as.factor(NewsTrain$NewsDesk)
-NewsTrainWords$SectionName = as.factor(NewsTrain$SectionName)
-NewsTrainWords$SubsectionName = as.factor(NewsTrain$SubsectionName)
+NewsTrainWords$WordCount = NewsTrain$WordCount
+NewsTrainWords$NewsDesk = NewsTrain$NewsDesk
+NewsTrainWords$SectionName = NewsTrain$SectionName
+NewsTrainWords$SubsectionName = NewsTrain$SubsectionName
+NewsTrainWords$Weekday = NewsTrain$Weekday
+NewsTrainWords$Hour = NewsTrain$Hour
 
-# glm
-NewsWordsLog = glm(Popular ~ ., data=NewsTrainWords, family=binomial)
+NewsTrainWordsLog = glm(Popular ~ ., data=NewsTrainWords, family=binomial)
+NewsTrainWordsLog.pred = predict(NewsTrainWordsLog, type = "response")
 
-NewsWordsLog.pred = predict(NewsWordsLog, type = "response")
+
+# Now we can prepare our submission file for Kaggle:
+
+MySubmission = data.frame(UniqueID = NewsTest$UniqueID, Probability1 = PredTest)
+
+write.csv(MySubmission, "SubmissionHeadlineLog.csv", row.names=FALSE)
 
 library(ROCR)
-ROCR.NewsWordsLog.pred = prediction(NewsWordsLog.pred, NewsTrainWords$Popular)
-auc1 = as.numeric(performance(ROCR.NewsWordsLog.pred, "auc")@y.values)
-auc1  # 0.831404, 0.9176791, 0.9314769, 0.9433447
-
-# randomForest, auc change little
-library(randomForest)
-set.seed(12345)
-NewsWordsRF = randomForest(Popular~.,data=NewsTrainWords)
-NewsWordsRF.pred = predict(NewsWordsRF, type="prob")
-ROCR.NewsWordsRF.pred = prediction(NewsWordsRF.pred[,2], NewsTrainWords$Popular)
-auc2 = as.numeric(performance(ROCR.NewsWordsRF.pred, "auc")@y.values)
-auc2  # 0.7865993, 0.9020076,0.9250309, 0.9289548
-
-# Tree, change little
-library(rpart)
-library(rpart.plot)
-library(ROCR)
-
-install.packages("caret")
-library(caret)
-install.packages("e1071")
-library(e1071)
-
-# Define cross-validation experiment
-numFolds = trainControl( method = "cv", number = 10 )
-cpGrid = expand.grid( .cp = seq(0.001,0.01,0.001)) 
-
-# Perform the cross validation
-train(Popular ~ ., data = NewsTrainWords, method = "rpart", trControl = numFolds, tuneGrid = cpGrid )
-
-# Create a new CART model
-NewsWordsTree = rpart(Popular ~ ., data=NewsTrainWords, method="class", cp=0.006)
-NewsWordsTree.pred = predict(NewsWordsTree)
-ROCR.NewsWordsTree.pred = prediction(NewsWordsTree.pred[,2], NewsTrainWords$Popular)
-auc3 = as.numeric(performance(ROCR.NewsWordsTree.pred, "auc")@y.values)
-auc3  # 0.5, 0.7273768, 0.7781507, 0.7821516, 0.8909988
-
-prp(NewsWordsTree)
-
+ROCR.NewsTrainWordsLog.pred = prediction(NewsTrainWordsLog.pred, NewsTrainWords$Popular)
+auc1 = as.numeric(performance(ROCR.NewsTrainWordsLog.pred, "auc")@y.values)
+auc1  # 0.9437113
 
 
