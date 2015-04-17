@@ -1,6 +1,7 @@
 # Unit 7 - Lecture 2, Predictive Policing
 
-
+setwd("D:/workspace/The Analytics Edge/unit7-visualization")
+Sys.setlocale(category = "LC_ALL", locale = "English")
 # VIDEO 3 - A Basic Line Plot
 
 # Load our data:
@@ -42,7 +43,10 @@ ggplot(WeekdayCounts, aes(x=Var1, y=Freq)) + geom_line(aes(group=1))
 # Change our x and y labels:
 ggplot(WeekdayCounts, aes(x=Var1, y=Freq)) + geom_line(aes(group=1)) + xlab("Day of the Week") + ylab("Total Motor Vehicle Thefts")
 
+# Quick Question
+ggplot(WeekdayCounts, aes(x=Var1, y=Freq)) + geom_line(aes(group=1), linetype=2) + xlab("Day of the Week") + ylab("Total Motor Vehicle Thefts")
 
+ggplot(WeekdayCounts, aes(x=Var1, y=Freq)) + geom_line(aes(group=1), alpha=0.3) + xlab("Day of the Week") + ylab("Total Motor Vehicle Thefts")
 
 # VIDEO 4 - Adding the Hour of the Day
 
@@ -89,7 +93,12 @@ ggplot(DayHourCounts, aes(x = Hour, y = Var1)) + geom_tile(aes(fill = Freq)) + s
 ggplot(DayHourCounts, aes(x = Hour, y = Var1)) + geom_tile(aes(fill = Freq)) + scale_fill_gradient(name="Total MV Thefts", low="white", high="red") + theme(axis.title.y = element_blank())
 
 
+# Quick Question
+# plot 2
+ggplot(DayHourCounts, aes(x = Var1, y = Hour)) + geom_tile(aes(fill = Freq)) + scale_fill_gradient(name="Total MV Thefts", low="white", high="red") + theme(axis.title.y = element_blank())
 
+# plot 3
+ggplot(DayHourCounts, aes(x = Hour, y = Var1)) + geom_tile(aes(fill = Freq)) + scale_fill_gradient(name="Total MV Thefts", low="white", high="black") + theme(axis.title.y = element_blank())
 
 # VIDEO 5 - Maps
 
@@ -126,7 +135,10 @@ ggmap(chicago) + geom_point(data = LatLonCounts, aes(x = Long, y = Lat, color = 
 # We can also use the geom_tile geometry
 ggmap(chicago) + geom_tile(data = LatLonCounts, aes(x = Long, y = Lat, alpha = Freq), fill="red")
 
-
+# Quick Qustion
+LatLonCounts2 = subset(LatLonCounts, Freq>0)
+ggmap(chicago) + geom_tile(data = LatLonCounts2, aes(x = Long, y = Lat, alpha = Freq), fill="red")
+nrow(LatLonCounts) - nrow(LatLonCounts2)
 
 # VIDEO 6 - Geographical Map on US
 
