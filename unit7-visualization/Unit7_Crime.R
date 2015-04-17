@@ -178,3 +178,6 @@ ggplot(murderMap, aes(x = long, y = lat, group = group, fill = MurderRate)) + ge
 ggplot(murderMap, aes(x = long, y = lat, group = group, fill = MurderRate)) + geom_polygon(color = "black") + scale_fill_gradient(low = "black", high = "red", guide = "legend", limits = c(0,10))
 
 
+# Quick Question
+str(murderMap)
+ggplot(murderMap, aes(x = long, y = lat, group = group, fill = GunOwnership)) + geom_polygon(color = "black") + scale_fill_gradient(low = "black", high = "red", guide = "legend")
