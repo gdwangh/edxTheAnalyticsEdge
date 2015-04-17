@@ -156,6 +156,27 @@ auc1
 
 # write.csv(MySubmission, "SubmissionLogSimple.csv", row.names=FALSE)
 
+#####################################################################################
+#################################################################
+
+# glm 2 simple: scores = 0.60406, valid accuracy = 0.9021905, auc = 0.9356753
+NewsLog2 = glm(Popular ~ NewsDesk+SectionName+SubsectionName+WordCount+Weekday+Hour+headline.wordNum+Snippet.wordNum, data=NewsTrainWords, family=binomial)
+
+pred = predict(NewsLog2, type = "response")
+table(NewsTrainWords$Popular, pred>0.5)  
+# train accuracy = 0.9074803
+(3642+507)/(3642+507+258+165)
+
+pred = predict(NewsLog2, newdata = NewsValidWords, type = "response")
+table(NewsValidWords$Popular, pred>0.5)  
+# valid accuracy = 0.9021905
+(1547+224) / (1547+227+85+104)
+
+# auc = 0.9356753
+pred = predict(NewsLog2, type = "response")
+ROCR.pred = prediction(pred, NewsTrainWords$Popular)
+auc1 = as.numeric(performance(ROCR.pred, "auc")@y.values)
+auc1 
 ##################################################################################
 # randome Forest with text bag: scores = 0.62870, accurrcy = 0.9096939, auc=0.933361
 library(caret)
