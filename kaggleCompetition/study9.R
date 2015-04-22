@@ -26,8 +26,8 @@ SubsectionNameFactor = as.factor(c(NewsTrain$SubsectionName, NewsTest$Subsection
 NewsTrain$SubsectionName = SubsectionNameFactor[1:(nrow(NewsTrain))]
 NewsTest$SubsectionName = SubsectionNameFactor[(nrow(NewsTrain)+1):length(SubsectionNameFactor)]
 
-# NewsTrain$logWordCount = log(NewsTrain$WordCount+1)
-# NewsTest$logWordCount = log(NewsTest$WordCount+1)
+NewsTrain$logWordCount = log(NewsTrain$WordCount+1)
+NewsTest$logWordCount = log(NewsTest$WordCount+1)
 
 # split train data to training set and valid set
 library(caTools)
@@ -49,17 +49,18 @@ SimpleRF.Pred = predict(SimpleRF, newdata=Valid, type="prob")
 
 pred = (SimpleLog.Pred + SimpleRF.Pred[,2])/2
 table(Valid$Popular, pred>0.5)  
-(1571+220)/nrow(Valid)  # 0.9137755
+(1567+220)/nrow(Valid)  # 0.9117347
 
-(1563+224)/nrow(Valid)  # 0.9117347
 
 
 # auc
 library("ROCR")
-SimpleRF.pred = predict(SimpleRF, type = "prob")
-ROCR.SimpleLog.pred = prediction(SimpleRF.pred[,2], Train$Popular)
+pred1 = predict(SimpleLog, type = "response")
+Pred2 = predict(SimpleRF, type = "prob")
+Pred = (pred1 + Pred2[,2])/2
+ROCR.SimpleLog.pred = prediction(Pred, Train$Popular)
 auc = as.numeric(performance(ROCR.SimpleLog.pred, "auc")@y.values)
-auc  # 0.9366087
+auc  # 0.9420884
 
 
 # test
