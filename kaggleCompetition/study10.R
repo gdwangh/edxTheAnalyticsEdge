@@ -1,5 +1,5 @@
-# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
-setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+# setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
 
 NewsTrain = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 NewsTest = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -45,13 +45,8 @@ table(tmp4$NewsDesk, tmp4$SubsectionName)
 NewsTrain[NewsTrain$NewsDesk!="" & NewsTrain$SubsectionName=="",]$SubsectionName = NewsTrain[NewsTrain$NewsDesk!="" & NewsTrain$SubsectionName=="",]$NewsDesk
 NewsTest[NewsTest$NewsDesk!="" & NewsTest$SubsectionName=="",]$SubsectionName = NewsTest[NewsTest$NewsDesk!="" & NewsTest$SubsectionName=="",]$NewsDesk
 
-
-table(NewsTrain$NewsDesk)
-table(NewsTrain$SectionName)
-table(NewsTrain$SubsectionName)
-
-head(NewsTrain[NewsTrain$NewsDesk=="", c(1,2,3)])
-head(NewsTrain[NewsTrain$NewsDesk=="", c(1,2,3)])
+# NewsTrain[NewsTrain$NewsDesk=="",]$NewsDesk = "empty"
+# NewsTest[NewsTest$NewsDesk=="",]$NewsDesk = "empty"
 
 # translate 
 NewsTrain$PubDate = strptime(NewsTrain$PubDate, "%Y-%m-%d %H:%M:%S")
@@ -76,6 +71,17 @@ SubsectionNameFactor = as.factor(c(NewsTrain$SubsectionName, NewsTest$Subsection
 NewsTrain$SubsectionNameFactor = SubsectionNameFactor[1:(nrow(NewsTrain))]
 NewsTest$SubsectionNameFactor = SubsectionNameFactor[(nrow(NewsTrain)+1):length(SubsectionNameFactor)]
 
+NewsTrain$logWordCount = log(NewsTrain$WordCount + 1)
+NewsTest$logWordCount = log(NewsTest$WordCount + 1)
+
+NewsTrain$NewsDeskInt = as.integer(NewsTrain$NewsDeskFactor)
+NewsTrain$SectionNameInt = as.integer(NewsTrain$SectionNameFactor)
+NewsTrain$SubsectionNameInt = as.integer(NewsTrain$SubsectionNameFactor)
+
+NewsTest$NewsDeskInt = as.integer(NewsTest$NewsDeskFactor)
+NewsTest$SectionNameInt = as.integer(NewsTest$SectionNameFactor)
+NewsTest$SubsectionNameInt = as.integer(NewsTest$SubsectionNameFactor)
+
 # split train data to training set and valid set
 library(caTools)
 set.seed(333)
@@ -85,42 +91,65 @@ Valid = subset(NewsTrain, spl==FALSE)
 
 # glm has error
 # # glm
-# set.seed(12345)
 # SimpleLog = glm(Popular ~ WordCount+Hour+Weekday+NewsDesk+SectionName+SubsectionName, data=Train, family="binomial")
 # SimpleLog.Pred = predict(SimpleLog, newdata=Valid, type="response")
 
+library(glmnet)
+
+cols = c("logWordCount", "Hour", "Weekday", "NewsDeskInt", "SectionNameInt","SubsectionNameInt")
+
+set.seed(12345)
+fit = cv.glmnet(x=as.matrix(Train[, cols]), y=Train$Popular, alpha=1, type.measure='auc', family = "binomial")
+plot(fit)
+
+fit$lambda.1se
+fit.best <- fit$glmnet.fit
+
+fit.coef <- coef(fit$glmnet.fit, s = fit$lambda.1se) 
+fit.coef[which(fit.coef != 0)] 
+
+# glmnet.pred = predict(fit, s='lambda.min', newx=as.matrix(Valid[, cols]), type="response")
+glmnet.pred = predict(fit, s='lambda.1se', newx=as.matrix(Valid[, cols]), type="response")
+
+table(Valid$Popular, glmnet.pred>0.5)  
+# (1599+16)/nrow(Valid)  # 0.8239796
+(1620+2)/nrow(Valid)    # 0.827551
 
 # randomForest 
-fitControl <- trainControl(## 10-fold CV
-                            method = "repeatedcv",
-                            number = 10,
-                            ## repeated ten times
-                            repeats = 10)
-RFmodel = train(Popular ~ WordCount+Hour+Weekday+NewsDeskFactor+SectionNameFactor+SubsectionNameFactor, 
-                data=Train, trControl = fitControl)
-
 library(randomForest)
 set.seed(12345)
 SimpleRF = randomForest(Popular ~ WordCount+Hour+Weekday+NewsDeskFactor+SectionNameFactor+SubsectionNameFactor, data=Train)
 SimpleRF.Pred = predict(SimpleRF, newdata=Valid, type="prob")
 
-pred = (SimpleLog.Pred + SimpleRF.Pred[,2])/2
+table(Valid$Popular, SimpleRF.Pred[,2]>0.5)  
+(1574+227)/nrow(Valid)  # 0.9188776
+
+pred = SimpleRF.Pred[,2] * 0.7 + glmnet.pred * 0.3
 table(Valid$Popular, pred>0.5)  
-(1574+219)/nrow(Valid)  # 0.9147959
+
+(1584+210)/nrow(Valid)  # 0.9153061
 
 
 # auc
 library("ROCR")
 
-ROCR.SimpleLog.pred = prediction(pred, Valid$Popular)
-auc = as.numeric(performance(ROCR.SimpleLog.pred, "auc")@y.values)
-auc  # 0.943889
+ROCR.SimpleRF.Pred = prediction(SimpleRF.Pred[,2], Valid$Popular)
+auc = as.numeric(performance(ROCR.SimpleRF.Pred, "auc")@y.values)
+auc  # 0.9398286
+
+ROCR.pred = prediction(pred, Valid$Popular)
+auc = as.numeric(performance(ROCR.pred, "auc")@y.values)
+auc  # 0.9425832
 
 # test
-SimpleLog.Pred = predict(SimpleLog, newdata=NewsTest, type="response")
-SimpleRF.Pred = predict(SimpleRF, newdata=NewsTest, type="prob")
-PredTest = (SimpleLog.Pred + SimpleRF.Pred[,2])/2
+# SimpleLog.Pred = predict(SimpleLog, newdata=NewsTest, type="response")
 
+Glmnet.Pred = predict(fit, s='lambda.min', newx=as.matrix(NewsTest[, cols]), type="response")
+
+SimpleRF.Pred = predict(SimpleRF, newdata=NewsTest, type="prob")
+PredTest = Glmnet.Pred * 0.3 + SimpleRF.Pred[,2]*0.7
+
+# PredTest = predict(SimpleRF, newdata=NewsTest, type="prob")
 MySubmission = data.frame(UniqueID = NewsTest$UniqueID, Probability1 = PredTest)
-write.csv(MySubmission, "SubmissionLogRF.csv", row.names=FALSE)
+write.csv(MySubmission, "SubmissionImputeGlmnetRF.csv", row.names=FALSE)
 
