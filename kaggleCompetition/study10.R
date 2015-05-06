@@ -1,5 +1,5 @@
-setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
-# setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
 
 NewsTrain = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 NewsTest = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)

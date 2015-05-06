@@ -1,6 +1,6 @@
 library(tm)
 library(caret)
-library(caretEnsemble)
+library(caretEnsemble)  # wangh: Combine several predictive models via weights
 library(doParallel)
 library(randomForest)
 library(gbm)
@@ -8,7 +8,10 @@ library(kernlab)
 library(timeDate)
 library(chron)
 library(ROCR)
-setwd("/home/branden/Documents/edxAnalyticsEdge/competition")
+# setwd("/home/branden/Documents/edxAnalyticsEdge/competition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
 # set.seed(99)
@@ -54,7 +57,12 @@ CorpusHeadline = tm_map(CorpusHeadline, stemDocument)
 
 # Now we are ready to convert our corpus to a DocumentTermMatrix, remove sparse terms, and turn it into a data frame. 
 # We selected one particular threshold to remove sparse terms, but remember that you can try different numbers!
-dtm = DocumentTermMatrix(CorpusHeadline, control=list(weighting=function(x) weightTfIdf(x, normalize=FALSE)))
+dtm = DocumentTermMatrix(CorpusHeadline, control=list(weighting=function(x) weightTfIdf(x, normalize=FALSE))) 
+# wangh: weightTfIdf() 计算term频率，逆文本频率指数（如果一个关键词只在很少的网页中出现，
+# 我们通过它就容易锁定搜索目标，它的权重也就应该大。反之如果一个词在大量网页中出现，我们
+# 看到它仍然不很清楚要找什么内容，因此它应该小。概括地讲，假定一个关键词 ｗ 在 Ｄｗ 个
+# 网页中出现过，那么 Ｄｗ 越大，ｗ 的权重越小，反之亦然。）
+
 sparse = removeSparseTerms(dtm, 0.988)
 HeadlineWords = as.data.frame(as.matrix(sparse))
 
@@ -181,6 +189,8 @@ train$Popular <- as.factor(ifelse(newsTrain$Popular==1,"Yes","No"))
 train$UniqueID <- NULL
 test <- tail(all, nrow(newsTest))
 
+# wangh: add fiveStats definition for error:object 'fiveStats' not found
+fiveStats <- function(...) c(twoClassSummary(...), defaultSummary(...))
 
 ## ENSEMBLE
 ensCtrl <- trainControl(method="cv",
@@ -196,9 +206,12 @@ rfGrid <- expand.grid(mtry=c(17))
 gbmGrid <- expand.grid(n.trees=c(3500), interaction.depth=c(27), shrinkage=c(.001))
 svmGrid <- expand.grid(.sigma=c(.0007),.C=c(16,32))
 
-cl <- makeCluster(7)
+# wangh: parallel in multicore
+cl <- makeCluster(7)  # Creates a set of copies of R running in parallel and communicating over sockets.
 registerDoParallel(cl)
 tme <- Sys.time()
+
+
 model_list <- caretList(
   Popular ~ .,
   data=train,
