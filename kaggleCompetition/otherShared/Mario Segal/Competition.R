@@ -1,3 +1,7 @@
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+
+
 #read data
 train <- read.csv('NYTimesBlogTrain.csv',stringsAsFactors=F)
 test <- read.csv('NYTimesBlogTest.csv',stringsAsFactors=F)
@@ -17,7 +21,7 @@ library(kknn)
 library(glmnet)
 library(gbm)
 library(caretEnsemble)
-library(doMC)
+# library(doMC)  # library for parrel which is not available for windows
 library(tau)
 library(e1071)
 
@@ -31,7 +35,11 @@ table(data$group)
 
 #let's do some basic processing
 data$date = as.Date(data$PubDate,'%Y-%m-%d ')
-data$time = sapply(strsplit(data$PubDate,' '), function(x) times(x[2]))
+
+# wanghui: run error so change it 
+# data$time = sapply(strsplit(data$PubDate,' '), function(x) times(x[2]))
+data$time = strptime(data$PubDate, "%Y-%m-%d %H:%M:%S")
+
 data$weekday = weekdays(data$date)
 data$hour = as.character((hours(data$time)))
 

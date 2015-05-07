@@ -7,7 +7,9 @@
 # Make sure you have downloaded these files from the Kaggle website, and have navigated to the directory where you saved the files on your computer 
 
 # We are adding in the argument stringsAsFactors=FALSE, since we have some text fields
-setwd( "C:\\Neeraj\\backup\\tech\\coursera\\AnalyticEdge\\kaggle")
+# setwd( "C:\\Neeraj\\backup\\tech\\coursera\\AnalyticEdge\\kaggle")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+#setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 NewsTrain = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 NewsTest = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -116,6 +118,8 @@ tr = train(x=xtrain, y=ytrain, method="glmnet", family = "binomial", metric="ROC
 #alpha = 1 and lambda = 0.002335721
 alpha <- tr$bestTune$alpha
 lambda <- tr$bestTune$lambda
+modl <- tr$finalModel
+
 pred <- predict(tr, newdata=xtrain, type='prob')[,2]
 PredTest <- predict(tr, newdata=xtest, type='prob')[,2]
 ###test.pred =predict (tr$finalModel ,s=tr$bestTuen$lambda ,newx=xtrain, type="response")

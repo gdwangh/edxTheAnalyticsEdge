@@ -1,5 +1,7 @@
 # We are adding in the argument stringsAsFactors=FALSE, since we have some text fields
-setwd( "C:\\Neeraj\\backup\\tech\\coursera\\AnalyticEdge\\kaggle")
+# setwd( "C:\\Neeraj\\backup\\tech\\coursera\\AnalyticEdge\\kaggle")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+#setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 NewsTrain = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 NewsTest = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -57,7 +59,7 @@ set.seed(144)
 #### n.trees = 1500, interaction.depth = 7 and shrinkage = 0.01
 ### interaction.depth = c(9, 11), n.trees = c(1700, 2000, 2300), shrinkage = c(0.002, 0.005, 0.006))
 #### n.trees = 2300, interaction.depth = 11 and shrinkage = 0.005
-gbmGrid8 <-  expand.grid(interaction.depth = c(11, 13), n.trees = c(2300, 2600), shrinkage = c(0.005))
+gbmGrid <-  expand.grid(interaction.depth = c(11, 13), n.trees = c(2300, 2600), shrinkage = c(0.005))
 nf  <- trainControl(method="cv", number=10, classProbs = TRUE, summaryFunction = twoClassSummary)
 gbmtr <- train(as.factor(Popular) ~. ,data = Train, method = "gbm",trControl = nf, tuneGrid=gbmGrid, metric ="ROC",verbose = T)
 varImp(gbmtr, scale=F)
