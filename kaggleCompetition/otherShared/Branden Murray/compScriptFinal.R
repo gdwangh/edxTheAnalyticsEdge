@@ -9,8 +9,8 @@ library(timeDate)
 library(chron)
 library(ROCR)
 # setwd("/home/branden/Documents/edxAnalyticsEdge/competition")
-# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
-setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+#setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -206,8 +206,8 @@ rfGrid <- expand.grid(mtry=c(17))
 gbmGrid <- expand.grid(n.trees=c(3500), interaction.depth=c(27), shrinkage=c(.001))
 svmGrid <- expand.grid(.sigma=c(.0007),.C=c(16,32))
 
-# wangh: parallel in multicore
-cl <- makeCluster(7)  # Creates a set of copies of R running in parallel and communicating over sockets.
+wangh: parallel in multicore
+cl <- makeCluster(3)  # Creates a set of copies of R running in parallel and communicating over sockets.
 registerDoParallel(cl)
 tme <- Sys.time()
 
@@ -243,7 +243,7 @@ model_preds$ensemble <- ens_preds
 
 
 # Ensemble Stack
-cl <- makeCluster(7)
+cl <- makeCluster(3)
 registerDoParallel(cl)
 tme <- Sys.time()
 gbm_stack <- caretStack(
