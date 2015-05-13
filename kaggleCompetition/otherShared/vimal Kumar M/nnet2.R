@@ -1,5 +1,8 @@
 #Neural Network. With Text
-setwd("G:/vimal/data science/Analytical Edge/kaggle")
+# setwd("G:/vimal/data science/Analytical Edge/kaggle")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+#setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+
 set.seed(144)
 
 NewsTrain = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)

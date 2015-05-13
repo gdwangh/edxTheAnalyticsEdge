@@ -21,7 +21,10 @@ library(e1071) # svm
 
 # 1.2 Load Training/Test datasets
 # UniqueID: Train 1-6532, Test 6533-8402
-setwd("~/Desktop/coursera/analyticsEdge/kaggle/")
+# setwd("~/Desktop/coursera/analyticsEdge/kaggle/")
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+#setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+
 Train = read.csv("NYTimesBlogTrain.csv",stringsAsFactors=FALSE)
 Test = read.csv("NYTimesBlogTest.csv",stringsAsFactors=FALSE)
 testID = Test$UniqueID
