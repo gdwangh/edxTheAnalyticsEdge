@@ -57,20 +57,22 @@ maxWC=max(News$WordCount)
 News$NORMWordCount=(News$WordCount-minWC)/(maxWC-minWC)
 hist(News$NORMHeadlineLength)
 
-News$NORMAbstractWordCount=(News$AbstractWordCount-minAWC)/(maxAWC-minAWC)
-hist(News$NORMAbstractWordCount)
-
 # picture captions and other tiny snippets are really not substantive articles,
 # they have 0 Populars and logistic will otherwise favor shortness
 # many but not all of these are captured in RegularBlogs/UnpopularRegularBlogs
 News$Short=as.factor(News$LogWordCount<1.8)
 
-# there's correlated cluster in word count vs. abstract length which is likely at Abstract just repeated as text, also not Popular
-# not sure my attempt to count words in abstract will ever quite match the original word count though...
+# there's correlated cluster in word count vs. abstract length which is likely at Abstract 
+# just repeated as text, also not Popular
+# not sure my attempt to count words in abstract will ever quite match the original word count 
+# though...
 News$AbstractWordCount=sapply(gregexpr("\\b\\W+\\b", News$Abstract, perl=TRUE), function(x) sum(x>0) ) + 1
 minAWC=min(News$AbstractWordCount)
 maxAWC=max(News$AbstractWordCount)
 News$NORMAbstractWordCount=(News$AbstractWordCount-minAWC)/(maxAWC-minAWC)
+
+hist(News$NORMAbstractWordCount)
+
 #it's close!
 News$AlternativeShort<-as.factor(News$WordCount<(News$AbstractWordCount+2))
 News$AlternativeShort2<-as.factor(News$WordCount<(News$AbstractWordCount*4))
@@ -84,7 +86,8 @@ News$NewsType<-recode(News$NewsType,"'Open'='none';'Sports'='none';'Sports Sport
 table(News$NewsType)
 
 #words 
-#business is a category that has a medium number of popular items seemingly not well caught by RegularBlogs
+#business is a category that has a medium number of popular items seemingly not well caught 
+# by RegularBlogs
 News$Facebook = as.factor(ifelse(grepl("Facebook",News$Headline,ignore.case=FALSE),1,0))
 News$Apple = as.factor(ifelse(grepl("Apple",News$Headline,ignore.case=FALSE),1,0))
 News$WallStreet=as.factor(ifelse(grepl("Wall St",News$HandA,ignore.case=FALSE),1,0))
