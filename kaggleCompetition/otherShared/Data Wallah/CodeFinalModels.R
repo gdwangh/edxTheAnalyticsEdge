@@ -26,6 +26,9 @@
 # PubDate = the publication date, in the format "Year-Month-Day Hour:Minute:Second"
 # UniqueID = a unique identifier for each article
 
+setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+
 a = read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 b = read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
 
@@ -85,12 +88,14 @@ Yvals = popTemp
 require(glmnet)
 # if want to use multiple cores, comment out if not
 require(doParallel)
-cl = makeCluster(detectCores())
+# cl = makeCluster(detectCores())
+cl = makeCluster(detectCores()-1)
 registerDoParallel(cl)
 
 # below due to oconnoda and Utah777
+# Does k-fold cross-validation for glmnet, produces a plot, and returns a value for lambda
 m1glmnet = cv.glmnet(Xvals, Yvals, family='binomial', type.measure='auc', parallel=TRUE, intercept=FALSE, alpha=1)
-coeffs = coef(m1glmnet, s = "lambda.1se")
+coeffs = coef(m1glmnet, s = "lambda.1se")  # Extract Model Coefficients
 coeffs = as.data.frame(as.table(as.matrix(coeffs)))
 filtered_coeffs = coeffs[abs(coeffs$Freq) > 0,] # Set 0 to higher if you want to cull extra parameters
 filtered_coeffs = filtered_coeffs[order(abs(filtered_coeffs$Freq), decreasing = TRUE),] # View these to look through the selected variables in decreasing order of importance
