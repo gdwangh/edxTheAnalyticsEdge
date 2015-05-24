@@ -1,5 +1,5 @@
 setwd('D:/workspace/The Analytics Edge/unit4')
-setwd('D:/doc/study/TheAnalyticsEdge/unit4')
+setwd('D:/doc/study/TheAnalyticsEdge/unit4-tree')
 
 
 # 1.1

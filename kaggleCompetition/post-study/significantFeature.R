@@ -1,4 +1,5 @@
-setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+# setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -128,100 +129,5 @@ auc = as.numeric(performance(ROCR.SimpleRF.Pred, "auc")@y.values)
 auc  # 0.9340012
 
 
-modelLookup("glm")$parameter # no parameter to tune
-modelLookup("rf")$parameter  # mtry
-
-library(doParallel)
-cl<- makeCluster(2)  
-registerDoParallel(cl)
-
-## ENSEMBLE
-library(caret)
-ensCtrl<- trainControl(method="cv",
-                       number=10,
-                       savePredictions=TRUE,
-                       allowParallel=TRUE,
-                       classProbs=TRUE,
-                       selectionFunction="best",
-                       summaryFunction=twoClassSummary)
 
 
-rfGrid<- expand.grid(mtry=c(1:20))
-set.seed(1000)
-rfFit = train(Popular~NewsDesk+SectionName+SubsectionName+logCount+Weekday+Hour,
-              data = newsTrain,
-              method="rf", 
-              trControl=ensCtrl,
-              tuneGrid=rfGrid,
-              metric="ROC")
-# rfFit: The final value used for the model was mtry = 18
-rfGrid<- expand.grid(mtry=c(18))
-
-# glmnet
-modelLookup("glmnet")$parameter  # alpha  lambda
-
-library(glmnet)
-set.seed(1000)
-x = newsTrain[,c("NewsDesk","SectionName","SubsectionName","logCount","Weekday","Hour")]
-gla1 <- cv.glmnet(data.matrix(x), y=newsTrain$Popular, nfolds = 10, alpha=1, type.measure="auc", family="binomial")
-gla1$lambda.1se
-pred1 = predict(gla1$glmnet.fit, newx=data.matrix(x), s = gla1$lambda.min)
-
-gla0 <- cv.glmnet(x, y=newsTrain$Popular, nfolds = 10, alpha=0, type.measure="auc", family="binomial")
-gla0$lambda.1se
-pred0 = predict(gla0$glmnet.fit, newx=data.matrix(x), s = gla0$lambda.min)
-
-library("ROCR")
-ROCR.Pred1 = prediction(pred1, newsTrain$Popular)
-auc1 = as.numeric(performance(ROCR.Pred1, "auc")@y.values)
-auc1  # 0.8208463
-
-ROCR.Pred0 = prediction(pred0, newsTrain$Popular)
-auc0 = as.numeric(performance(ROCR.Pred0, "auc")@y.values)
-auc0  # 0.8198742
-
-# 0.0008256524
-glmGrid<- expand.grid(alpha=seq(0, 1, by=0.1), lambda=c(1:110)*0.0001)
-
-set.seed(1000)
-glmnetFit = train(Popular~NewsDesk+SectionName+SubsectionName+logCount+Weekday+Hour,
-              data = newsTrain,
-              method="glmnet", 
-              trControl=ensCtrl,
-              tuneGrid=glmGrid,
-              metric="ROC")
-
-# lambda=c(1:100)*0.001, result :  alpha = 1 and lambda = 0.001
-#  lambda=c(1:110)*0.0001, result: alpha = 1 and lambda = 8e-04
-
-glmGrid<- expand.grid(alpha=c(1), lambda=8e-04)
-
-# gbm
-modelLookup("gbm")
-gbmGrid<- expand.grid(n.trees=c(1:50)*100, interaction.depth=c(1:50), shrinkage=c(0.001),n.minobsinnode = c(10))
-set.seed(1000)
-gbmFit = train(Popular~NewsDesk+SectionName+SubsectionName+logCount+Weekday+Hour,
-                  data = newsTrain,
-                  method="gbm", 
-                  trControl=ensCtrl,
-                  tuneGrid=gbmGrid,
-                  metric="ROC")
-
-gbmGrid<- expand.grid(n.trees=c(3500), interaction.depth=c(27), shrinkage=c(.001))
-svmGrid<- expand.grid(.sigma=c(.0007),.C=c(16,32))
-
-model_list<- caretList(
-  Popular~NewsDesk+SectionName+SubsectionName+logCount+Weekday+Hour,
-  data=train,
-  trControl=ensCtrl,
-  metric="ROC",
-  tuneList=list(
-    rf=caretModelSpec(method="rf", tuneGrid=rfGrid, nodesize=1, ntree=3000),
-    glmnet=caretModelSpec(method="glmnet",tuneGrid=glmGrid, preProcess=c("center","scale")),
-    gbm=caretModelSpec(method="gbm", tuneGrid=gbmGrid),
-    svm=caretModelSpec(method="svmRadial",tuneGrid=svmGrid, preProcess=c("center","scale"))
-  )
-)
-
-
-stopCluster(cl)
