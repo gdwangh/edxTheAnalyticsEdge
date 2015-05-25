@@ -1,5 +1,5 @@
-# setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
-setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -128,6 +128,22 @@ ROCR.SimpleRF.Pred = prediction(pred, newsTrain$Popular)
 auc = as.numeric(performance(ROCR.SimpleRF.Pred, "auc")@y.values)
 auc  # 0.9340012
 
+pred.test = predict(glmFit, newdata=newsTest, type="response")
+MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test)
+write.csv(MySubmission, "post-study/significantFeature.csv", row.names=FALSE)
 
+# rf
+library(randomForest)
+rfFit = randomForest(Popular~NewsDesk+SectionName+SubsectionName+logCount+Weekday+Hour, data=newsTrain)
+pred = predict(rfFit, type="prob")
 
+# auc
+library("ROCR")
+ROCR.RF.Pred = prediction(pred[,2], newsTrain$Popular)
+auc = as.numeric(performance(ROCR.RF.Pred, "auc")@y.values)
+auc  # 0.9334952
+
+pred.test = predict(rfFit, newdata=newsTest, type="prob")
+MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
+write.csv(MySubmission, "post-study/significantFeatureRF.csv", row.names=FALSE)
 
