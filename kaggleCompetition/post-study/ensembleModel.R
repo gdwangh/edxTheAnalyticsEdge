@@ -53,14 +53,14 @@ ensCtrl<- trainControl(method="cv",
                        summaryFunction=twoClassSummary)
 
 
-rfGrid<- expand.grid(mtry=c(1:20))
-set.seed(1000)
-rfFit = train(PopularFactor~NewsDesk+SectionName+SubsectionName+logWordCount+Weekday+Hour,
-              data = newsTrain,
-              method="rf", 
-              trControl=ensCtrl,
-              tuneGrid=rfGrid,
-              metric="ROC")
+# rfGrid<- expand.grid(mtry=c(1:20))
+# set.seed(1000)
+# rfFit = train(PopularFactor~NewsDesk+SectionName+SubsectionName+logWordCount+Weekday+Hour,
+#               data = newsTrain,
+#               method="rf", 
+#               trControl=ensCtrl,
+#               tuneGrid=rfGrid,
+#               metric="ROC")
 # rfFit: The final value used for the model was mtry = 12
 rfGrid<- expand.grid(mtry=c(12))
 
@@ -171,18 +171,21 @@ cl<- makeCluster(detectCores()-1)
 registerDoParallel(cl)
 
 # svmGrid<- expand.grid(.sigma=c(.0007),.C=c(16,32))
-svmGrid<- expand.grid(.sigma=c(1:10)*.0001,.C=c(1:100)*0.1)
+# svmGrid<- expand.grid(.sigma=c(1:10)*.0001,.C=c(1:100)*0.1): sigma = 0.001 and C = 9.1
+# svmGrid<- expand.grid(.sigma=c(1:10)*.001,.C=c(9:50)):  sigma = 0.001 and C = 20
 
-set.seed(1000)
-svmFit = train(PopularFactor~NewsDesk+SectionName+SubsectionName+logWordCount+Weekday+Hour,
-               data = newsTrain,
-                method="svmRadial", 
-                trControl=ensCtrl,
-                tuneGrid=svmGrid,
-                 metric="ROC")
+# set.seed(1000)
+# svmFit = train(PopularFactor~NewsDesk+SectionName+SubsectionName+logWordCount+Weekday+Hour,
+#                data = newsTrain,
+#                 method="svmRadial", 
+#                 trControl=ensCtrl,
+#                 tuneGrid=svmGrid,
+#                  metric="ROC")
 
+svmGrid<- expand.grid(.sigma=c(0.001),.C=c(20))
 
 library(caretEnsemble)
+set.seed(1000)
 model_list<- caretList(
   PopularFactor~NewsDesk+SectionName+SubsectionName+logWordCount+Weekday+Hour,
   data=newsTrain,
@@ -208,10 +211,17 @@ model_preds<- data.frame(model_preds)
 ens_preds<- predict(greedy_ensemble, newdata=newsTrain)
 model_preds$ensemble<- ens_preds
 
+colAUC(model_preds, newsTrain$PopularFactor)
+
+
 library("ROCR")
 ROCR.Pred = prediction( newsTrain$Popular, ens_preds>0.5)
 auc = as.numeric(performance(ROCR.Pred, "auc")@y.values)
-auc  # 0.8949889
+auc  # 0.8956273
+
+pred.test = predict(greedy_ensemble, newdata=newsTest)
+MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test)
+write.csv(MySubmission, "post-study/ensembleModel.csv", row.names=FALSE)
 
 # other method
 cl<- makeCluster(detectCores()-1)  
@@ -234,12 +244,18 @@ gbm_stack<- caretStack(
 )
 
 
+stopCluster(cl)
+
 model_preds2 <- model_preds
 model_preds2$ensemble <- predict(gbm_stack, newdata=newsTrain, type='prob')$Yes
+colAUC(model_preds2, newsTrain$PopularFactor)
 
 library("ROCR")
 ROCR.Pred2 = prediction( newsTrain$Popular, model_preds2$ensemble>0.5)
 auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
 auc  # 0.9036781
 
-stopCluster(cl)
+
+pred.test = predict(gbm_stack, newdata=newsTest, type='prob')$Yes
+MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test)
+write.csv(MySubmission, "post-study/ensembleModel_gbm.csv", row.names=FALSE)
