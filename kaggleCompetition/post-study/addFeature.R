@@ -17,50 +17,83 @@ newsTest$Weekday = newsTest$PubDate$wday
 newsTrain$Hour = newsTrain$PubDate$hour
 newsTest$Hour = newsTest$PubDate$hour
 
-# trans to factor
+# # trans to factor
 newsTrain$PopularFactor = as.factor(ifelse(newsTrain$Popular,"Yes", "No"))
 
-# add empty NewsDesk & sectionName
-allCat = rbind(newsTrain[,c("NewsDesk", "SectionName","SubsectionName")], newsTest[,c("NewsDesk", "SectionName","SubsectionName"), ])
+newsTrain$NewsDeskFactor = as.factor(newsTrain$NewsDesk)
+newsTest$NewsDeskFactor = factor(newsTest$NewsDesk, levels = levels(newsTrain$NewsDeskFactor))
 
-table(allCat$SectionName,allCat$NewsDesk)
+newsTrain$SectionNameFactor = as.factor(newsTrain$SectionName)
+newsTest$SectionNameFactor = factor(newsTest$SectionName, levels = levels(newsTrain$SectionNameFactor))
 
-allCat[allCat$NewsDesk == "Business" & allCat$SectionName=="",]$SectionName = "Business Day"
-allCat[allCat$NewsDesk == "Culture" & allCat$SectionName=="",]$SectionName = "Arts"
-allCat[allCat$NewsDesk == "Foreign" & allCat$SectionName=="",]$SectionName = "World"
-allCat[allCat$NewsDesk == "National" & allCat$SectionName=="",]$SectionName = "U.S."
-allCat[allCat$NewsDesk == "OpEd" & allCat$SectionName=="",]$SectionName = "Opinion"
-allCat[allCat$NewsDesk == "Science" & allCat$SectionName=="",]$SectionName = "Health"
-allCat[allCat$NewsDesk == "Sports" & allCat$SectionName=="",]$SectionName = "Sports"
-allCat[allCat$NewsDesk == "Styles" & allCat$SectionName=="",]$SectionName = "U.S."
-allCat[allCat$NewsDesk == "TStyle" & allCat$SectionName=="",]$SectionName = "TStyle"
 
-# TStyle all empty
+newsTrain$SubsectionNameFactor = as.factor(newsTrain$SubsectionName)
+newsTest$SubsectionNameFactor = factor(newsTest$SubsectionName, levels = levels(newsTrain$SubsectionNameFactor))
 
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Arts",]$NewsDesk = "Culture"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Business Day",]$NewsDesk = "Business"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Crosswords/Games",]$NewsDesk = "Business"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Health",]$NewsDesk = "Science"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="N.Y. / Region",]$NewsDesk = "Metro"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Open",]$NewsDesk = "Open"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Opinion",]$NewsDesk = "OpEd"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Travel",]$NewsDesk = "Travel"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Technology",]$NewsDesk = "Business"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="U.S.",]$NewsDesk = "Styles"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="World",]$NewsDesk = "Foreign"
-allCat[allCat$NewsDesk == "" & allCat$SectionName=="Multimedia",]$NewsDesk = "Multimedia"
+# check question words or ? in the headline
+newsTrain$HeadlineIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Headline) ))
+newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Headline)), levels = levels(newsTrain$HeadlineIsQuestion))
 
-allCat$NewsDesk = as.factor(allCat$NewsDesk)
-allCat$SectionName = as.factor(allCat$SectionName)
-allCat$SubsectionName = as.factor(allCat$SubsectionName)
+table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
+tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
 
-newsTrain$NewsDeskFactor = head(allCat$NewsDesk, nrow(newsTrain))
-newsTest$NewsDeskFactor = tail(allCat$NewsDesk, nrow(newsTest))
+# rf
+library(caret)
+ensCtrl<- trainControl(method="cv",
+                       number=10,
+                       savePredictions=TRUE,
+                       allowParallel=TRUE,
+                       classProbs=TRUE,
+                       selectionFunction="best",
+                       summaryFunction=twoClassSummary)
 
-newsTrain$SectionNameFactor = head(allCat$SectionName, nrow(newsTrain))
-newsTest$SectionNameFactor = tail(allCat$SectionName, nrow(newsTest))
+rfGrid<- expand.grid(mtry=c(10:20))
 
-newsTrain$SubsectionNameFactor = head(allCat$SubsectionName, nrow(newsTrain))
-newsTest$SubsectionNameFactor = tail(allCat$SubsectionName, nrow(newsTest))
+set.seed(1000)
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion,
+              data = newsTrain,
+              method="rf", 
+              trControl=ensCtrl,
+              tuneGrid=rfGrid,
+              metric="ROC")
 
-# 
+rfGrid<- expand.grid(mtry=c(14))
+
+pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
+
+library("ROCR")
+ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
+auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
+auc  # 0.9054244
+
+pred.test = predict(rfFit, newdata=newsTest, type="prob")
+MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
+write.csv(MySubmission, "post-study/addFeatureQuestion.csv", row.names=FALSE)
+
+#############################################################################
+# text conpus
+CorpusHeadline = Corpus(VectorSource(c(newsTrain$Headline)))
+
+# You can go through all of the standard pre-processing steps like we did in Unit 5:
+CorpusHeadline = tm_map(CorpusHeadline, tolower)
+CorpusHeadline = tm_map(CorpusHeadline, PlainTextDocument)
+CorpusHeadline = tm_map(CorpusHeadline, removePunctuation)
+CorpusHeadline = tm_map(CorpusHeadline, removeWords, stopwords("english"))
+CorpusHeadline = tm_map(CorpusHeadline, stemDocument)
+
+# dtm = DocumentTermMatrix(CorpusHeadline, control=list(weighting=function(x) weightTfIdf(x, normalize=FALSE))) 
+
+require(RWeka)
+library(rJava)
+TrigramTokenizer <- function(x) RWeka::NGramTokenizer(x, RWeka::Weka_control(min = 1, max = 3))  
+dtm <- DocumentTermMatrix(CorpusHeadline, control = list(tokenize = TrigramTokenizer, weighting=function(x) weightTfIdf(x, normalize=FALSE)))
+
+sparse = removeSparseTerms(dtm, 0.995)
+
+# HeadlineWords = as.data.frame(as.matrix(dtm))
+HeadlineWords = as.data.frame(as.matrix(sparse))
+
+library(wordcloud)
+wordcloud(colnames(HeadlineWords), colSums(HeadlineWords))
+
+sort(colSums(HeadlineWords))
