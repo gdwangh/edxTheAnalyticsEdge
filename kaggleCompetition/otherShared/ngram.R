@@ -1,4 +1,4 @@
-setwd("D:/workspace/The Analytics Edge/kaggleCompetition")
+setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
 # setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)

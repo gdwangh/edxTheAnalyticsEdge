@@ -1,5 +1,5 @@
-# setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
-setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -31,46 +31,10 @@ newsTrain$SubsectionNameFactor = as.factor(newsTrain$SubsectionName)
 newsTest$SubsectionNameFactor = factor(newsTest$SubsectionName, levels = levels(newsTrain$SubsectionNameFactor))
 
 
-
 # check question words or ? in the headline
 newsTrain$HeadlineIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Headline, ignore.case = TRUE) ))
 newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIsQuestion))
 
-table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
-tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
-
-# rf
-library(caret)
-ensCtrl<- trainControl(method="cv",
-                       number=10,
-                       savePredictions=TRUE,
-                       allowParallel=TRUE,
-                       classProbs=TRUE,
-                       selectionFunction="best",
-                       summaryFunction=twoClassSummary)
-
-rfGrid<- expand.grid(mtry=c(10:20))
-
-set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion,
-              data = newsTrain,
-              method="rf", 
-              trControl=ensCtrl,
-              tuneGrid=rfGrid,
-              metric="ROC")
-
-rfGrid<- expand.grid(mtry=c(14))
-
-pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
-
-library("ROCR")
-ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
-auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
-auc  # 0.9054244
-
-pred.test = predict(rfFit, newdata=newsTest, type="prob")
-MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
-write.csv(MySubmission, "post-study/addFeatureQuestion.csv", row.names=FALSE)
 
 #############################################################################
 # text conpus
@@ -96,27 +60,21 @@ sparse = removeSparseTerms(dtm, 0.995)
 # HeadlineWords = as.data.frame(as.matrix(dtm))
 HeadlineWords = as.data.frame(as.matrix(sparse))
 
-library(wordcloud)
-wordcloud(colnames(HeadlineWords), colSums(HeadlineWords))
-
-sort(colSums(HeadlineWords))
-
 # popular words
 popWords = c("week", "new york", "fashion", "daily", "day", "report", "today", "2015","Business","Spring/Summer","first","bank","2014","obama")
 newsTrain$HeadlineIspopWords = as.factor(as.numeric(grepl(paste(popWords, collapse="|"), newsTrain$Headline, ignore.case = TRUE) ))
 newsTest$HeadlineIspopWords = factor(as.numeric(grepl(paste(popWords, collapse="|"), newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIspopWords))
 
-flag = as.factor(as.numeric(grepl("polit", newsTrain$Headline, ignore.case = TRUE) ))
+# emotion
+library(qdap)
+pol<- polarity(paste(newsTrain$Headline, newsTrain$Snippet, ".") )
+newsTrain$polarity = pol[[1]]$polarity
 
-table(flag, newsTrain$PopularFactor)
-tapply(newsTrain$Popular,flag,mean)
-
-table(newsTrain$HeadlineIspopWords, newsTrain$PopularFactor)
-tapply(newsTrain$Popular,newsTrain$HeadlineIspopWords,mean)
+pol<- polarity(paste(newsTest$Headline, newsTest$Snippet, ".") )
+newsTest$polarity = pol[[1]]$polarity
 
 
-newsTrain[HeadlineWords$springsumm>0, "Headline"]
-
+# rf
 library(caret)
 ensCtrl<- trainControl(method="cv",
                        number=10,
@@ -129,22 +87,22 @@ ensCtrl<- trainControl(method="cv",
 rfGrid<- expand.grid(mtry=c(10:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+HeadlineIspopWords,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+HeadlineIspopWords+polarity,
               data = newsTrain,
               method="rf", 
               trControl=ensCtrl,
               tuneGrid=rfGrid,
               metric="ROC")
 
-rfGrid<- expand.grid(mtry=c(19))
+rfGrid<- expand.grid(mtry=c(13))
 
 pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
 
 library("ROCR")
 ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
 auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
-auc  # 0.9350237
+auc  # 0.9271775
 
 pred.test = predict(rfFit, newdata=newsTest, type="prob")
 MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
-write.csv(MySubmission, "post-study/addFeature.csv", row.names=FALSE)
+write.csv(MySubmission, "post-study/emotion.csv", row.names=FALSE)
