@@ -1,5 +1,5 @@
-setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
-# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+#setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -30,47 +30,64 @@ newsTest$SectionNameFactor = factor(newsTest$SectionName, levels = levels(newsTr
 newsTrain$SubsectionNameFactor = as.factor(newsTrain$SubsectionName)
 newsTest$SubsectionNameFactor = factor(newsTest$SubsectionName, levels = levels(newsTrain$SubsectionNameFactor))
 
-
 # check question words or ? in the headline
 newsTrain$HeadlineIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Headline, ignore.case = TRUE) ))
 newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIsQuestion))
 
+table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
+tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
 
 #############################################################################
 # text conpus
 library(tm)
-CorpusHeadline = Corpus(VectorSource(c(newsTrain$Headline)))
-
-# You can go through all of the standard pre-processing steps like we did in Unit 5:
-CorpusHeadline = tm_map(CorpusHeadline, tolower)
-CorpusHeadline = tm_map(CorpusHeadline, PlainTextDocument)
-CorpusHeadline = tm_map(CorpusHeadline, removePunctuation)
-CorpusHeadline = tm_map(CorpusHeadline, removeWords, stopwords("english"))
-CorpusHeadline = tm_map(CorpusHeadline, stemDocument)
-
-# dtm = DocumentTermMatrix(CorpusHeadline, control=list(weighting=function(x) weightTfIdf(x, normalize=FALSE))) 
-
 require(RWeka)
 library(rJava)
+library(wordcloud)
+
 TrigramTokenizer <- function(x) RWeka::NGramTokenizer(x, RWeka::Weka_control(min = 1, max = 3))  
-dtm <- DocumentTermMatrix(CorpusHeadline, control = list(tokenize = TrigramTokenizer, weighting=function(x) weightTfIdf(x, normalize=FALSE)))
 
-sparse = removeSparseTerms(dtm, 0.995)
-
-# HeadlineWords = as.data.frame(as.matrix(dtm))
-HeadlineWords = as.data.frame(as.matrix(sparse))
+cal_text_corpus = function(text, throld) {
+  Corpus = Corpus(VectorSource(c(text)))
+  
+  # You can go through all of the standard pre-processing steps like we did in Unit 5:
+  Corpus = tm_map(Corpus, tolower)
+  Corpus = tm_map(Corpus, PlainTextDocument)
+  Corpus = tm_map(Corpus, removePunctuation)
+  Corpus = tm_map(Corpus, removeWords, stopwords("english"))
+  Corpus = tm_map(Corpus, stemDocument)
+  
+  dtm <- DocumentTermMatrix(Corpus, control = list(tokenize = TrigramTokenizer, weighting=function(x) weightTfIdf(x, normalize=FALSE)))
+  
+  sparse = removeSparseTerms(dtm, throld)
+  
+  textWords = as.data.frame(as.matrix(sparse))
+  
+  #   wordcloud(colnames(textWords), colSums(textWords))
+  #   sort(colSums(textWords))
+  
+  as.factor(ifelse( rowSums(textWords)==0, "No", "Yes"))
+}
 
 # popular words
-popWords = c("week", "new york", "fashion", "daily", "day", "report", "today", "2015","Business","Spring/Summer","first","bank","2014","obama")
-newsTrain$HeadlineIspopWords = as.factor(as.numeric(grepl(paste(popWords, collapse="|"), newsTrain$Headline, ignore.case = TRUE) ))
-newsTest$HeadlineIspopWords = factor(as.numeric(grepl(paste(popWords, collapse="|"), newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIspopWords))
+HeadlineIsPop = cal_text_corpus(c(newsTrain$Headline, newsTest$Headline),0.985)
+SnippetIsPop = cal_text_corpus(c(newsTrain$Snippet, newsTest$Snippet),0.965)
+AbstractIsPop = cal_text_corpus(c(newsTrain$Abstract, newsTest$Abstract),0.965)
+
+newsTrain$headlineIsPopWord = head(HeadlineIsPop, nrow(newsTrain))
+newsTest$headlineIsPopWord = tail(HeadlineIsPop, nrow(newsTest))
+
+newsTrain$SnippetIsPop = head(SnippetIsPop, nrow(newsTrain))
+newsTest$SnippetIsPop = tail(SnippetIsPop, nrow(newsTest))
+
+newsTrain$AbstractIsPop = head(AbstractIsPop, nrow(newsTrain))
+newsTest$AbstractIsPop = tail(AbstractIsPop, nrow(newsTest))
 
 # emotion
 library(qdap)
-pol<- polarity(paste(newsTrain$Headline, newsTrain$Snippet, ".") )
+pol<- polarity(paste(newsTrain$Headline, newsTrain$Snippet, newsTrain$Abstract,".") )
 newsTrain$polarity = pol[[1]]$polarity
 
-pol<- polarity(paste(newsTest$Headline, newsTest$Snippet, ".") )
+pol<- polarity(paste(newsTest$Headline, newsTest$Snippet, newsTest$Abstract,".") )
 newsTest$polarity = pol[[1]]$polarity
 
 
@@ -87,7 +104,7 @@ ensCtrl<- trainControl(method="cv",
 rfGrid<- expand.grid(mtry=c(10:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+HeadlineIspopWords+polarity,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop+polarity,
               data = newsTrain,
               method="rf", 
               trControl=ensCtrl,

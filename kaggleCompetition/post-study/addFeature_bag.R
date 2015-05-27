@@ -1,5 +1,5 @@
-setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
-# setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+#setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -40,37 +40,47 @@ tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
 #############################################################################
 # text conpus
 library(tm)
-CorpusHeadline = Corpus(VectorSource(c(newsTrain$Headline, newsTest$Headline)))
-
-# You can go through all of the standard pre-processing steps like we did in Unit 5:
-CorpusHeadline = tm_map(CorpusHeadline, tolower)
-CorpusHeadline = tm_map(CorpusHeadline, PlainTextDocument)
-CorpusHeadline = tm_map(CorpusHeadline, removePunctuation)
-CorpusHeadline = tm_map(CorpusHeadline, removeWords, stopwords("english"))
-CorpusHeadline = tm_map(CorpusHeadline, stemDocument)
-
-# dtm = DocumentTermMatrix(CorpusHeadline, control=list(weighting=function(x) weightTfIdf(x, normalize=FALSE))) 
-
 require(RWeka)
 library(rJava)
-TrigramTokenizer <- function(x) RWeka::NGramTokenizer(x, RWeka::Weka_control(min = 1, max = 3))  
-dtm <- DocumentTermMatrix(CorpusHeadline, control = list(tokenize = TrigramTokenizer, weighting=function(x) weightTfIdf(x, normalize=FALSE)))
-
-sparse = removeSparseTerms(dtm, 0.985)
-
-# HeadlineWords = as.data.frame(as.matrix(dtm))
-HeadlineWords = as.data.frame(as.matrix(sparse))
-colnames(HeadlineWords) = make.names(colnames(HeadlineWords))
-
 library(wordcloud)
-wordcloud(colnames(HeadlineWords), colSums(HeadlineWords))
 
-sort(colSums(HeadlineWords))
+TrigramTokenizer <- function(x) RWeka::NGramTokenizer(x, RWeka::Weka_control(min = 1, max = 3))  
+
+cal_text_corpus = function(text, throld) {
+  Corpus = Corpus(VectorSource(c(text)))
+  
+  # You can go through all of the standard pre-processing steps like we did in Unit 5:
+  Corpus = tm_map(Corpus, tolower)
+  Corpus = tm_map(Corpus, PlainTextDocument)
+  Corpus = tm_map(Corpus, removePunctuation)
+  Corpus = tm_map(Corpus, removeWords, stopwords("english"))
+  Corpus = tm_map(Corpus, stemDocument)
+  
+  dtm <- DocumentTermMatrix(Corpus, control = list(tokenize = TrigramTokenizer, weighting=function(x) weightTfIdf(x, normalize=FALSE)))
+  
+  sparse = removeSparseTerms(dtm, throld)
+  
+  textWords = as.data.frame(as.matrix(sparse))
+
+#   wordcloud(colnames(textWords), colSums(textWords))
+#   sort(colSums(textWords))
+  
+  as.factor(ifelse( rowSums(textWords)==0, "No", "Yes"))
+}
 
 # popular words
-sel_col = c("NewsDeskFactor","SectionNameFactor","SubsectionNameFactor","logWordCount","Weekday","Hour","HeadlineIsQuestion")
-newsTrainWords = cbind(head(HeadlineWords, nrow(newsTrain)), newsTrain[,c(sel_col, "PopularFactor")])
-newsTestWords = cbind(tail(HeadlineWords, nrow(newsTest)), newsTest[,sel_col])
+HeadlineIsPop = cal_text_corpus(c(newsTrain$Headline, newsTest$Headline),0.985)
+SnippetIsPop = cal_text_corpus(c(newsTrain$Snippet, newsTest$Snippet),0.965)
+AbstractIsPop = cal_text_corpus(c(newsTrain$Abstract, newsTest$Abstract),0.965)
+
+newsTrain$headlineIsPopWord = head(HeadlineIsPop, nrow(newsTrain))
+newsTest$headlineIsPopWord = tail(HeadlineIsPop, nrow(newsTest))
+
+newsTrain$SnippetIsPop = head(SnippetIsPop, nrow(newsTrain))
+newsTest$SnippetIsPop = tail(SnippetIsPop, nrow(newsTest))
+
+newsTrain$AbstractIsPop = head(AbstractIsPop, nrow(newsTrain))
+newsTest$AbstractIsPop = tail(AbstractIsPop, nrow(newsTest))
 
 library(caret)
 ensCtrl<- trainControl(method="cv",
@@ -84,21 +94,21 @@ ensCtrl<- trainControl(method="cv",
 rfGrid<- expand.grid(mtry=c(10:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~.,
-              data = newsTrainWords,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop,
+              data = newsTrain,
               method="rf", 
               trControl=ensCtrl,
               tuneGrid=rfGrid,
               metric="ROC")
 
-rfGrid<- expand.grid(mtry=c(16))
+rfGrid<- expand.grid(mtry=c(14))
 
 pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
 
 library("ROCR")
 ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
 auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
-auc  # 0.9130969
+auc  # 0.9288616
 
 pred.test = predict(rfFit, newdata=newsTest, type="prob")
 MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
