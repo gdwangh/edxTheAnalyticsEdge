@@ -118,7 +118,7 @@ pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
 library("ROCR")
 ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
 auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
-auc  # 0.9271775
+auc  # 0.9453868
 
 pred.test = predict(rfFit, newdata=newsTest, type="prob")
 MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
