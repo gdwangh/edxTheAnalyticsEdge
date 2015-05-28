@@ -106,6 +106,29 @@ pol<- polarity(newsTest$Abstract)
 newsTest$AbstractPolarity = pol[[1]]$polarity
 newsTest[is.na(newsTest$AbstractPolarity), ]$AbstractPolarity = 0
 
+# cal the count of every day
+newsTrain$yday = newsTrain$PubDate$yday
+newsTest$yday = newsTest$PubDate$yday
+
+library(dplyr)
+newsTrain_state<- tbl_df(newsTrain) %>% select(yday, Popular) %>% group_by(yday) %>% 
+  summarise(count = n(), 
+            cnt1 = sum(Popular==1, na.rm = TRUE),  
+            cnt0 = sum(Popular==0, na.rm = TRUE),
+            Pop_perc = mean(Popular, na.rm = TRUE))
+cor(newsTrain_state[2:5])  # Pop_perc and count有很强的副相关
+
+newsTrain_state<- tbl_df(newsTrain) %>% select(yday) %>% group_by(yday) %>% 
+  summarise(count = n())
+
+tmp = merge(newsTrain[,c("UniqueID","yday")], newsTrain_state[,c(1,2)], by="yday")
+newsTrain$everydayCount = tmp$count
+  
+newsTest_state<- tbl_df(newsTest) %>% select(yday) %>% group_by(yday) %>% 
+  summarise(count = n())
+tmp = merge(newsTest[,c("UniqueID","yday")], newsTest_state, by="yday")
+newsTest$everydayCount = tmp$count
+
 # rf
 library(caret)
 ensCtrl<- trainControl(method="cv",
@@ -119,7 +142,7 @@ ensCtrl<- trainControl(method="cv",
 rfGrid<- expand.grid(mtry=c(1:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+AbstractIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop+AbstractPolarity+HSpolarity,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+AbstractIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop+AbstractPolarity+HSpolarity+everydayCount,
               data = newsTrain,
               method="rf",
               importance=TRUE,

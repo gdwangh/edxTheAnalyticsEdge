@@ -37,6 +37,10 @@ newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|Wha
 table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
 tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
 
+newsTrain$AbstractIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Abstract, ignore.case = TRUE) ))
+newsTest$AbstractIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Abstract, ignore.case = TRUE)), levels = levels(newsTrain$AbstractIsQuestion))
+
+
 #############################################################################
 # text conpus
 library(tm)
@@ -94,12 +98,15 @@ ensCtrl<- trainControl(method="cv",
 rfGrid<- expand.grid(mtry=c(10:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+AbstractIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop,
               data = newsTrain,
               method="rf", 
               trControl=ensCtrl,
               tuneGrid=rfGrid,
               metric="ROC")
+
+importance(rfFit$finalModel, type=1)
+varImp(rfFit)
 
 rfGrid<- expand.grid(mtry=c(14))
 
