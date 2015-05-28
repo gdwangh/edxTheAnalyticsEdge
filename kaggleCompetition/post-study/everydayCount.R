@@ -1,5 +1,5 @@
-setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
-#setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
+#setwd("D:/workspace/TheAnalyticsEdge/kaggleCompetition")
+setwd("D:/doc/study/TheAnalyticsEdge/kaggleCompetition")
 
 newsTrain <- read.csv("NYTimesBlogTrain.csv", stringsAsFactors=FALSE)
 newsTest <- read.csv("NYTimesBlogTest.csv", stringsAsFactors=FALSE)
@@ -31,14 +31,15 @@ newsTrain$SubsectionNameFactor = as.factor(newsTrain$SubsectionName)
 newsTest$SubsectionNameFactor = factor(newsTest$SubsectionName, levels = levels(newsTrain$SubsectionNameFactor))
 
 # check question words or ? in the headline
-newsTrain$HeadlineIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Headline, ignore.case = TRUE) ))
-newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIsQuestion))
+# not significant
+# newsTrain$HeadlineIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Headline, ignore.case = TRUE) ))
+# newsTest$HeadlineIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Headline, ignore.case = TRUE)), levels = levels(newsTrain$HeadlineIsQuestion))
 
-table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
-tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
-
-newsTrain$AbstractIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Abstract, ignore.case = TRUE) ))
-newsTest$AbstractIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Abstract, ignore.case = TRUE)), levels = levels(newsTrain$AbstractIsQuestion))
+# table(newsTrain$HeadlineIsQuestion, newsTrain$Popular)
+# tapply(newsTrain$Popular,newsTrain$HeadlineIsQuestion,mean)
+# 
+# newsTrain$AbstractIsQuestion = as.factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTrain$Abstract, ignore.case = TRUE) ))
+# newsTest$AbstractIsQuestion = factor(as.numeric(grepl("[\\? | ^(How|Why|When|What|Where|Who|Should|Can|Is|Was) ]", newsTest$Abstract, ignore.case = TRUE)), levels = levels(newsTrain$AbstractIsQuestion))
 
 
 
@@ -81,11 +82,12 @@ AbstractIsPop = cal_text_corpus(c(newsTrain$Abstract, newsTest$Abstract),0.965)
 newsTrain$headlineIsPopWord = head(HeadlineIsPop, nrow(newsTrain))
 newsTest$headlineIsPopWord = tail(HeadlineIsPop, nrow(newsTest))
 
-newsTrain$SnippetIsPop = head(SnippetIsPop, nrow(newsTrain))
-newsTest$SnippetIsPop = tail(SnippetIsPop, nrow(newsTest))
-
-newsTrain$AbstractIsPop = head(AbstractIsPop, nrow(newsTrain))
-newsTest$AbstractIsPop = tail(AbstractIsPop, nrow(newsTest))
+# not significant
+# newsTrain$SnippetIsPop = head(SnippetIsPop, nrow(newsTrain))
+# newsTest$SnippetIsPop = tail(SnippetIsPop, nrow(newsTest))
+# 
+# newsTrain$AbstractIsPop = head(AbstractIsPop, nrow(newsTrain))
+# newsTest$AbstractIsPop = tail(AbstractIsPop, nrow(newsTest))
 
 # emotion
 library(qdap)
@@ -129,6 +131,11 @@ newsTest_state<- tbl_df(newsTest) %>% select(yday) %>% group_by(yday) %>%
 tmp = merge(newsTest[,c("UniqueID","yday")], newsTest_state, by="yday")
 newsTest$everydayCount = tmp$count
 
+# check significant
+glmFit = glm(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+headlineIsPopWord+AbstractPolarity+HSpolarity+everydayCount,
+             data = newsTrain,  family=binomial)
+summary(glmFit)
+
 # rf
 library(caret)
 ensCtrl<- trainControl(method="cv",
@@ -139,10 +146,10 @@ ensCtrl<- trainControl(method="cv",
                        selectionFunction="best",
                        summaryFunction=twoClassSummary)
 
-rfGrid<- expand.grid(mtry=c(1:20))
+rfGrid<- expand.grid(mtry=c(10:20))
 
 set.seed(1000)
-rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+HeadlineIsQuestion+AbstractIsQuestion+headlineIsPopWord+SnippetIsPop+AbstractIsPop+AbstractPolarity+HSpolarity+everydayCount,
+rfFit = train(PopularFactor~NewsDeskFactor+SectionNameFactor+SubsectionNameFactor+logWordCount+Weekday+Hour+headlineIsPopWord+AbstractPolarity+HSpolarity+everydayCount,
               data = newsTrain,
               method="rf",
               importance=TRUE,
@@ -157,8 +164,8 @@ pred.rf <- predict(rfFit, newdata=newsTrain, type='prob')
 library("ROCR")
 ROCR.Pred2 = prediction( newsTrain$Popular, pred.rf[,2]>0.5)
 auc = as.numeric(performance(ROCR.Pred2, "auc")@y.values)
-auc  # 0.941912
+auc  # 0.9463173
 
 pred.test = predict(rfFit, newdata=newsTest, type="prob")
 MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test[,2])
-write.csv(MySubmission, "post-study/emotion.csv", row.names=FALSE)
+write.csv(MySubmission, "post-study/emotionSignificant.csv", row.names=FALSE)
