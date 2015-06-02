@@ -431,4 +431,4 @@ auc  # 0.964333
 
 pred.test = predict(gbm_stack, newdata=newsTest, type='prob')$Yes
 MySubmission = data.frame(UniqueID = newsTest$UniqueID, Probability1 = pred.test)
-write.csv(MySubmission, "post-study/ensembleModel_gbm.csv", row.names=FALSE)
+write.csv(MySubmission, "post-study/caretStack.csv", row.names=FALSE)
